@@ -4,9 +4,7 @@ import { AaveV3Base } from '@bgd-labs/aave-address-book';
 import dayjs from 'dayjs';
 import { ethers } from 'ethers';
 
-const provider = new ethers.providers.JsonRpcProvider(
-  'https://mainnet.base.org',
-);
+const provider = new ethers.providers.JsonRpcProvider(process.env.BASE_RPC_URL);
 
 const poolDataProviderContract = new UiPoolDataProvider({
   uiPoolDataProviderAddress: AaveV3Base.UI_POOL_DATA_PROVIDER,

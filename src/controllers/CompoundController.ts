@@ -1,12 +1,12 @@
 import type { Request, Response } from 'express';
-import { getReservesAPY } from '../services/AaveService';
+import { getCompoundReservesAPY } from '../services/CompoundService';
 import type { ProtocolRates } from '../types/lending-protocol';
 
 export async function getReservesData(_req: Request, res: Response) {
   try {
-    const apyData = await getReservesAPY();
+    const apyData = await getCompoundReservesAPY();
     const response: ProtocolRates = {
-      protocol: 'aave',
+      protocol: 'compound',
       reserves: apyData,
     };
     return res.json(response);

@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import { aaveRouter } from './routes/aave';
 import { agentRouter } from './routes/agent';
+import { compoundRouter } from './routes/compound';
 import { validateEnvironment } from './utils/validateEnv';
 
 // Load environment variables
@@ -20,6 +21,7 @@ app.use(express.json());
 // Routes
 app.use('/api/agent', agentRouter);
 app.use('/api/aave', aaveRouter);
+app.use('/api/compound', compoundRouter);
 
 // Error handling
 app.use(
