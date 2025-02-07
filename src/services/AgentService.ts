@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import {
   AgentKit,
   CdpWalletProvider,
@@ -14,12 +13,12 @@ import { HumanMessage } from '@langchain/core/messages';
 import { MemorySaver } from '@langchain/langgraph';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { ChatOpenAI } from '@langchain/openai';
+import type { PortfolioStrategy } from '../types/portfolio-strategy';
 
 export class AgentService {
   private static instance: AgentService;
   private agent: any;
   private config: any;
-  private readonly WALLET_DATA_FILE = 'wallet_data.txt';
 
   private constructor() {}
 
@@ -32,20 +31,9 @@ export class AgentService {
   }
 
   private async initialize() {
-    // Initialize LLM
     const llm = new ChatOpenAI({
       model: 'gpt-4o-mini',
     });
-
-    let walletDataStr: string | null = null;
-
-    if (fs.existsSync(this.WALLET_DATA_FILE)) {
-      try {
-        walletDataStr = fs.readFileSync(this.WALLET_DATA_FILE, 'utf8');
-      } catch (error) {
-        console.error('Error reading wallet data:', error);
-      }
-    }
 
     const config = {
       apiKeyName: process.env.CDP_API_KEY_NAME,
@@ -53,12 +41,14 @@ export class AgentService {
         /\\n/g,
         '\n',
       ),
-      cdpWalletData: walletDataStr || undefined,
-      networkId: process.env.NETWORK_ID || 'base-sepolia',
     };
 
-    const walletProvider = await CdpWalletProvider.configureWithWallet(config);
+    const walletProvider = await CdpWalletProvider.configureWithWallet({
+      ...config,
+      networkId: process.env.NETWORK_ID || 'base-sepolia',
+    });
 
+    // Initialize CDP Wallet Provider
     const agentkit = await AgentKit.from({
       walletProvider,
       actionProviders: [
@@ -66,20 +56,8 @@ export class AgentService {
         pythActionProvider(),
         walletActionProvider(),
         erc20ActionProvider(),
-        cdpApiActionProvider({
-          apiKeyName: process.env.CDP_API_KEY_NAME,
-          apiKeyPrivateKey: process.env.CDP_API_KEY_PRIVATE_KEY?.replace(
-            /\\n/g,
-            '\n',
-          ),
-        }),
-        cdpWalletActionProvider({
-          apiKeyName: process.env.CDP_API_KEY_NAME,
-          apiKeyPrivateKey: process.env.CDP_API_KEY_PRIVATE_KEY?.replace(
-            /\\n/g,
-            '\n',
-          ),
-        }),
+        cdpApiActionProvider(config),
+        cdpWalletActionProvider(config),
       ],
     });
 
@@ -99,27 +77,110 @@ export class AgentService {
         you're on. If there is a 5XX (internal) HTTP error code, ask the user to try again later.
         `,
     });
-
-    const exportedWallet = await walletProvider.exportWallet();
-    fs.writeFileSync(this.WALLET_DATA_FILE, JSON.stringify(exportedWallet));
   }
 
-  public async processMessage(message: string): Promise<string[]> {
+  public async processMessage(
+    message: string,
+    _userAddress: string,
+  ): Promise<string[]> {
     const responses: string[] = [];
 
-    const stream = await this.agent.stream(
-      { messages: [new HumanMessage(message)] },
-      this.config,
-    );
+    try {
+      const stream = await this.agent.stream(
+        { messages: [new HumanMessage(message)] },
+        this.config,
+      );
 
-    for await (const chunk of stream) {
-      if ('agent' in chunk) {
-        responses.push(chunk.agent.messages[0].content);
-      } else if ('tools' in chunk) {
-        responses.push(chunk.tools.messages[0].content);
+      for await (const chunk of stream) {
+        if ('agent' in chunk) {
+          responses.push(chunk.agent.messages[0].content);
+        } else if ('tools' in chunk) {
+          responses.push(chunk.tools.messages[0].content);
+        }
       }
+
+      return responses;
+    } catch (error) {
+      console.error('Error processing message:', error);
+      throw error;
+    }
+  }
+
+  public async createStrategy(
+    userAddress: string,
+    description: string,
+  ): Promise<PortfolioStrategy> {
+    try {
+      const prompt = `
+        As a DeFi portfolio manager, analyze the following strategy description and create a structured portfolio strategy.
+        Description: "${description}"
+        
+        Create a strategy that includes:
+        1. Risk level (conservative, moderate, or aggressive)
+        2. Allocation percentages between lending and liquidity provision (must total 100%)
+        3. Asset preferences and constraints
+        
+        Format your response as a JSON object with the following structure:
+        {
+          "riskLevel": "conservative|moderate|aggressive",
+          "allocations": {
+            "lending": number,
+            "liquidity": number
+          },
+          "preferences": {
+            "stablecoinsOnly": boolean,
+            "preferredAssets": string[],
+            "minimumAPY": number (optional)
+          }
+        }
+        
+        Only respond with the JSON object, no additional text.
+      `;
+
+      const responses = await this.processMessage(prompt, userAddress);
+
+      // Parse the last response as JSON (assuming it's the strategy)
+      const strategyJson = JSON.parse(
+        responses[responses.length - 1],
+      ) as PortfolioStrategy;
+
+      // Validate the strategy structure
+      this.validateStrategy(strategyJson);
+
+      return strategyJson;
+    } catch (error) {
+      console.error('Error creating strategy:', error);
+      throw new Error('Failed to create portfolio strategy');
+    }
+  }
+
+  private validateStrategy(
+    strategy: PortfolioStrategy,
+  ): asserts strategy is PortfolioStrategy {
+    if (
+      !strategy.riskLevel ||
+      !['conservative', 'moderate', 'aggressive'].includes(strategy.riskLevel)
+    ) {
+      throw new Error('Invalid risk level');
     }
 
-    return responses;
+    if (
+      !strategy.allocations ||
+      typeof strategy.allocations.lending !== 'number' ||
+      typeof strategy.allocations.liquidity !== 'number' ||
+      Math.abs(
+        strategy.allocations.lending + strategy.allocations.liquidity - 100,
+      ) > 0.01
+    ) {
+      throw new Error('Invalid allocations');
+    }
+
+    if (
+      !strategy.preferences ||
+      typeof strategy.preferences.stablecoinsOnly !== 'boolean' ||
+      !Array.isArray(strategy.preferences.preferredAssets)
+    ) {
+      throw new Error('Invalid preferences');
+    }
   }
 }
