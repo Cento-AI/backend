@@ -1,6 +1,9 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
+import swaggerJsdoc from 'swagger-jsdoc';
+import swaggerUi from 'swagger-ui-express';
+import swaggerOptions from './config/swagger';
 import { aaveRouter } from './routes/aave';
 import { agentRouter } from './routes/agent';
 import { compoundRouter } from './routes/compound';
@@ -24,6 +27,9 @@ app.use('/api/agent', agentRouter);
 app.use('/api/aave', aaveRouter);
 app.use('/api/compound', compoundRouter);
 app.use('/api/user', userRouter);
+
+const specs = swaggerJsdoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Error handling
 app.use(
