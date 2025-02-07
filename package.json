@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Backend API for Cento AI",
   "main": "dist/server.js",
+  "engines": { "node": "20.x" },
   "scripts": {
     "start": "node dist/server.js",
     "dev": "ts-node-dev src/server.ts",
