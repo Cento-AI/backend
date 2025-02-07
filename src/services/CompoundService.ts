@@ -1,6 +1,7 @@
-import { type Address, formatUnits } from 'viem';
+import { type Address, erc20Abi, formatUnits } from 'viem';
 import { CompoundCometABI } from '../abis/CompoundComet';
 import { publicClient } from '../config/viem';
+import type { UserReserveData } from '../types/lending-protocol';
 
 interface CompoundReserveData {
   symbol: string;
@@ -61,5 +62,42 @@ export async function getCompoundReservesAPY(): Promise<CompoundReserveData[]> {
   } catch (error) {
     console.error('Error fetching Compound reserves:', error);
     throw new Error('Failed to fetch Compound reserves data');
+  }
+}
+
+export async function getUserReserves(
+  userAddress: Address,
+): Promise<UserReserveData[]> {
+  try {
+    const marketAddresses = Object.values(COMPOUND_MARKETS);
+    const userReserves = await Promise.all(
+      marketAddresses.map(async (market) => {
+        const [symbol, balance] = await Promise.all([
+          publicClient.readContract({
+            address: market,
+            abi: erc20Abi,
+            functionName: 'symbol',
+          }),
+          publicClient.readContract({
+            address: market,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [userAddress],
+          }),
+        ]);
+
+        return {
+          symbol,
+          underlyingAsset: market,
+          balance: formatUnits(balance, 18),
+        };
+      }),
+    );
+
+    // Filter out zero balances
+    return userReserves.filter((reserve) => Number(reserve.balance) > 0);
+  } catch (error) {
+    console.error('Error fetching user reserves:', error);
+    throw new Error('Failed to fetch user reserves data');
   }
 }
