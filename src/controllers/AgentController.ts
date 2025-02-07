@@ -43,3 +43,23 @@ export async function createStrategy(req: Request, res: Response) {
     return res.status(500).json({ error: 'Failed to create strategy' });
   }
 }
+
+export async function applyStrategy(req: Request, res: Response) {
+  try {
+    const { userAddress, strategy } = req.body;
+
+    if (!userAddress || !strategy) {
+      return res
+        .status(400)
+        .json({ error: 'User address and strategy are required' });
+    }
+
+    const agentService = await AgentService.getInstance();
+    const rebalance = await agentService.applyStrategy(userAddress, strategy);
+
+    return res.json(rebalance);
+  } catch (error) {
+    console.error('Error applying strategy:', error);
+    return res.status(500).json({ error: 'Failed to apply strategy' });
+  }
+}

@@ -13,7 +13,30 @@ import { HumanMessage } from '@langchain/core/messages';
 import { MemorySaver } from '@langchain/langgraph';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { ChatOpenAI } from '@langchain/openai';
+import { vaultActionProvider } from '../action-providers/vaultActionProvider';
 import type { PortfolioStrategy } from '../types/portfolio-strategy';
+import { getReservesAPY } from './AaveService';
+import { getCompoundReservesAPY } from './CompoundService';
+
+interface StrategyAction {
+  asset: string;
+  currentAmount: string;
+  targetAmount: string;
+  action: 'deposit' | 'withdraw';
+  protocol: 'aave' | 'compound';
+}
+
+interface PortfolioRebalance {
+  currentPortfolio: {
+    totalValue: string;
+    assets: Array<{
+      symbol: string;
+      balance: string;
+      value: string;
+    }>;
+  };
+  suggestedActions: StrategyAction[];
+}
 
 export class AgentService {
   private static instance: AgentService;
@@ -58,6 +81,9 @@ export class AgentService {
         erc20ActionProvider(),
         cdpApiActionProvider(config),
         cdpWalletActionProvider(config),
+        vaultActionProvider({
+          vaultAddress: process.env.VAULT_ADDRESS as `0x${string}`,
+        }),
       ],
     });
 
@@ -182,5 +208,69 @@ export class AgentService {
     ) {
       throw new Error('Invalid preferences');
     }
+  }
+
+  public async applyStrategy(
+    userAddress: string,
+    strategy: PortfolioStrategy,
+  ): Promise<PortfolioRebalance> {
+    try {
+      const prompt = `
+        Analyze the user's current portfolio and suggest actions to align with the given strategy.
+        
+        Current Portfolio:
+        ${await this.getCurrentPortfolioState(userAddress)}
+        
+        Target Strategy:
+        ${JSON.stringify(strategy, null, 2)}
+        
+        Available Protocols:
+        - Aave lending rates: ${await getReservesAPY()}
+        - Compound lending rates: ${await getCompoundReservesAPY()}
+        
+        Suggest specific actions to rebalance the portfolio according to the strategy.
+        Consider:
+        1. Current asset allocation vs target allocation
+        2. Preferred assets from strategy
+        3. Minimum APY requirements
+        4. Risk level constraints
+        
+        Format response as a JSON object with:
+        {
+          "currentPortfolio": {
+            "totalValue": "string",
+            "assets": [{ "symbol": "string", "balance": "string", "value": "string" }]
+          },
+          "suggestedActions": [{
+            "asset": "string",
+            "currentAmount": "string",
+            "targetAmount": "string",
+            "action": "deposit|withdraw",
+            "protocol": "aave|compound"
+          }]
+        }
+      `;
+
+      const responses = await this.processMessage(prompt, userAddress);
+      const rebalance = JSON.parse(responses[responses.length - 1]);
+
+      return rebalance;
+    } catch (error) {
+      console.error('Error applying strategy:', error);
+      throw new Error('Failed to apply portfolio strategy');
+    }
+  }
+
+  private async getCurrentPortfolioState(userAddress: string): Promise<string> {
+    // Get balances from both protocols
+    const [aaveBalances, compoundBalances] = await Promise.all([
+      this.getAaveBalances(userAddress),
+      this.getCompoundBalances(userAddress),
+    ]);
+
+    return JSON.stringify({
+      aave: aaveBalances,
+      compound: compoundBalances,
+    });
   }
 }
