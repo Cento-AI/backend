@@ -4,16 +4,14 @@ import {
   cdpApiActionProvider,
   cdpWalletActionProvider,
   erc20ActionProvider,
-  pythActionProvider,
   walletActionProvider,
-  wethActionProvider,
 } from '@coinbase/agentkit';
 import { getLangChainTools } from '@coinbase/agentkit-langchain';
 import { HumanMessage } from '@langchain/core/messages';
 import { MemorySaver } from '@langchain/langgraph';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { ChatOpenAI } from '@langchain/openai';
-import { vaultActionProvider } from '../action-providers/vaultActionProvider';
+import { vaultActionProvider } from '../action-providers/VaultActionProvider';
 import type { PortfolioStrategy } from '../types/portfolio-strategy';
 import { getReservesAPY } from './AaveService';
 import { getCompoundReservesAPY } from './CompoundService';
@@ -75,15 +73,11 @@ export class AgentService {
     const agentkit = await AgentKit.from({
       walletProvider,
       actionProviders: [
-        wethActionProvider(),
-        pythActionProvider(),
         walletActionProvider(),
         erc20ActionProvider(),
         cdpApiActionProvider(config),
         cdpWalletActionProvider(config),
-        vaultActionProvider({
-          vaultAddress: process.env.VAULT_ADDRESS as `0x${string}`,
-        }),
+        vaultActionProvider(),
       ],
     });
 

@@ -1,139 +1,150 @@
-import type { ActionProvider } from '@coinbase/agentkit';
-import type { Tool } from '@langchain/core/tools';
-import type { Address } from 'viem';
+import {
+  ActionProvider,
+  type EvmWalletProvider,
+  type Network,
+  customActionProvider,
+} from '@coinbase/agentkit';
+import { encodeFunctionData } from 'viem';
+import { VaultABI } from '../abis/VaultABI';
+import {
+  type AddLiquiditySchema,
+  type LendTokenSchema,
+  type RemoveLiquiditySchema,
+  type WithdrawLentTokenSchema,
+  addLiquiditySchema,
+  lendTokenSchema,
+  removeLiquiditySchema,
+  withdrawLentTokenSchema,
+} from '../validators/VaultActionSchema';
 
-// Define the supported actions
-type VaultAction =
-  | {
-      type: 'lend';
-      token: string;
-      amount: string;
-      protocol: 'aave' | 'compound';
-    }
-  | {
-      type: 'withdraw';
-      token: string;
-      amount: string;
-      protocol: 'aave' | 'compound';
-    }
-  | {
-      type: 'addLiquidity';
-      token0: string;
-      token1: string;
-      amount0: string;
-      amount1: string;
-    }
-  | {
-      type: 'removeLiquidity';
-      token0: string;
-      token1: string;
-      lpAmount: string;
-    };
+const lendTokenAction = customActionProvider<EvmWalletProvider>({
+  name: 'lend_tokens',
+  description: 'Lend tokens through the vault to a lending protocol',
+  schema: lendTokenSchema,
+  invoke: async (walletProvider, args: LendTokenSchema) => {
+    try {
+      const data = encodeFunctionData({
+        abi: VaultABI,
+        functionName: 'lendTokens',
+        args: [args.protocol, args.token, args.amount],
+      });
 
-export function vaultActionProvider(config: {
-  vaultAddress: Address;
-}): ActionProvider {
-  return {
-    name: 'vault',
-    description:
-      'Interact with the vault to manage lending and liquidity positions',
-    tools: [
-      {
-        name: 'lendTokens',
-        description: 'Lend tokens through the vault to a lending protocol',
-        parameters: {
-          type: 'object',
-          properties: {
-            token: { type: 'string', description: 'Token symbol to lend' },
-            amount: { type: 'string', description: 'Amount to lend' },
-            protocol: {
-              type: 'string',
-              enum: ['aave', 'compound'],
-              description: 'Lending protocol to use',
-            },
-          },
-          required: ['token', 'amount', 'protocol'],
-        },
-        execute: async ({ token, amount, protocol }) => {
-          try {
-            // Implementation will go here
-            return `Successfully lent ${amount} ${token} to ${protocol}`;
-          } catch (error) {
-            throw new Error(`Failed to lend tokens: ${error}`);
-          }
-        },
-      },
-      {
-        name: 'withdrawTokens',
-        description: 'Withdraw tokens from lending protocol through the vault',
-        parameters: {
-          type: 'object',
-          properties: {
-            token: { type: 'string', description: 'Token symbol to withdraw' },
-            amount: { type: 'string', description: 'Amount to withdraw' },
-            protocol: {
-              type: 'string',
-              enum: ['aave', 'compound'],
-              description: 'Lending protocol to withdraw from',
-            },
-          },
-          required: ['token', 'amount', 'protocol'],
-        },
-        execute: async ({ token, amount, protocol }) => {
-          try {
-            // Implementation will go here
-            return `Successfully withdrew ${amount} ${token} from ${protocol}`;
-          } catch (error) {
-            throw new Error(`Failed to withdraw tokens: ${error}`);
-          }
-        },
-      },
-      {
-        name: 'addLiquidity',
-        description: 'Add liquidity to a pool through the vault',
-        parameters: {
-          type: 'object',
-          properties: {
-            token0: { type: 'string', description: 'First token symbol' },
-            token1: { type: 'string', description: 'Second token symbol' },
-            amount0: { type: 'string', description: 'Amount of first token' },
-            amount1: { type: 'string', description: 'Amount of second token' },
-          },
-          required: ['token0', 'token1', 'amount0', 'amount1'],
-        },
-        execute: async ({ token0, token1, amount0, amount1 }) => {
-          try {
-            // Implementation will go here
-            return `Successfully added liquidity: ${amount0} ${token0} and ${amount1} ${token1}`;
-          } catch (error) {
-            throw new Error(`Failed to add liquidity: ${error}`);
-          }
-        },
-      },
-      {
-        name: 'removeLiquidity',
-        description: 'Remove liquidity from a pool through the vault',
-        parameters: {
-          type: 'object',
-          properties: {
-            token0: { type: 'string', description: 'First token symbol' },
-            token1: { type: 'string', description: 'Second token symbol' },
-            lpAmount: {
-              type: 'string',
-              description: 'Amount of LP tokens to burn',
-            },
-          },
-          required: ['token0', 'token1', 'lpAmount'],
-        },
-        execute: async ({ token0, token1, lpAmount }) => {
-          try {
-            // Implementation will go here
-            return `Successfully removed liquidity for ${token0}/${token1} pair`;
-          } catch (error) {
-            throw new Error(`Failed to remove liquidity: ${error}`);
-          }
-        },
-      },
-    ] as Tool[],
-  };
+      const hash = await walletProvider.sendTransaction({
+        to: args.vaultAddress,
+        data,
+      });
+
+      await walletProvider.waitForTransactionReceipt(hash);
+
+      return `Successfully lent ${args.amount} ${args.token} to ${args.protocol} on ${args.vaultAddress}`;
+    } catch (error) {
+      return `Error lending ${args.amount} ${args.token} to ${args.protocol} on ${args.vaultAddress}: ${error}`;
+    }
+  },
+});
+
+const withdrawLentAction = customActionProvider<EvmWalletProvider>({
+  name: 'withdraw_lent',
+  description: 'Withdraw lent tokens from a lending protocol through the vault',
+  schema: withdrawLentTokenSchema,
+  invoke: async (walletProvider, args: WithdrawLentTokenSchema) => {
+    try {
+      const data = encodeFunctionData({
+        abi: VaultABI,
+        functionName: 'withdrawLentTokens',
+        args: [args.protocol, args.token, args.amount],
+      });
+
+      const hash = await walletProvider.sendTransaction({
+        to: args.vaultAddress,
+        data,
+      });
+
+      await walletProvider.waitForTransactionReceipt(hash);
+
+      return `Successfully withdrew ${args.amount} ${args.token} from ${args.protocol} on ${args.vaultAddress}`;
+    } catch (error) {
+      return `Error withdrawing ${args.amount} ${args.token} from ${args.protocol} on ${args.vaultAddress}: ${error}`;
+    }
+  },
+});
+
+const addLiquidityAction = customActionProvider<EvmWalletProvider>({
+  name: 'add_liquidity',
+  description: 'Add liquidity to a pool through the vault',
+  schema: addLiquiditySchema,
+  invoke: async (walletProvider, args: AddLiquiditySchema) => {
+    try {
+      const data = encodeFunctionData({
+        abi: VaultABI,
+        functionName: 'addLiquidity',
+        args: [
+          args.protocol,
+          args.token0,
+          args.token1,
+          args.amount0,
+          args.amount1,
+        ],
+      });
+
+      const hash = await walletProvider.sendTransaction({
+        to: args.vaultAddress,
+        data,
+      });
+
+      await walletProvider.waitForTransactionReceipt(hash);
+
+      return `Successfully added liquidity: ${args.amount0} ${args.token0} and ${args.amount1} ${args.token1} on ${args.vaultAddress}`;
+    } catch (error) {
+      return `Error adding liquidity for ${args.token0}/${args.token1} on ${args.vaultAddress}: ${error}`;
+    }
+  },
+});
+
+export const removeLiquidityAction = customActionProvider<EvmWalletProvider>({
+  name: 'remove_liquidity',
+  description: 'Remove liquidity from a pool through the vault',
+  schema: removeLiquiditySchema,
+  invoke: async (walletProvider, args: RemoveLiquiditySchema) => {
+    try {
+      const data = encodeFunctionData({
+        abi: VaultABI,
+        functionName: 'removeLiquidity',
+        args: [args.protocol, args.token0, args.token1, args.lpAmount],
+      });
+
+      const hash = await walletProvider.sendTransaction({
+        to: args.vaultAddress,
+        data,
+      });
+
+      await walletProvider.waitForTransactionReceipt(hash);
+
+      return `Successfully removed ${args.lpAmount} LP tokens for ${args.token0}/${args.token1} on ${args.vaultAddress}`;
+    } catch (error) {
+      return `Error removing liquidity for ${args.token0}/${args.token1} on ${args.vaultAddress}: ${error}`;
+    }
+  },
+});
+
+export const vaultActionsProvider = [
+  lendTokenAction,
+  withdrawLentAction,
+  addLiquidityAction,
+  removeLiquidityAction,
+];
+
+class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
+  constructor() {
+    super('vault-action-provider', [
+      lendTokenAction,
+      withdrawLentAction,
+      addLiquidityAction,
+      removeLiquidityAction,
+    ]);
+  }
+
+  supportsNetwork = (_: Network) => true;
 }
+
+export const vaultActionProvider = () => new VaultActionProvider();
