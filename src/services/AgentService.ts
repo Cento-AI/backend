@@ -12,6 +12,7 @@ import { MemorySaver } from '@langchain/langgraph';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { ChatOpenAI } from '@langchain/openai';
 import { vaultActionProvider } from '../action-providers/VaultActionProvider';
+import { vaultFactoryActionProvider } from '../action-providers/VaultFactoryActionProvider';
 import type { PortfolioStrategy } from '../types/portfolio-strategy';
 import { getReservesAPY } from './AaveService';
 import { getCompoundReservesAPY } from './CompoundService';
@@ -78,6 +79,7 @@ export class AgentService {
         cdpApiActionProvider(config),
         cdpWalletActionProvider(config),
         vaultActionProvider(),
+        vaultFactoryActionProvider(),
       ],
     });
 
