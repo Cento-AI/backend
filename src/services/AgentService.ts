@@ -70,9 +70,11 @@ export class AgentService {
       ),
     };
 
-    const walletProvider = await CdpWalletProvider.configureWithWallet({
+    // Initialize with private key
+    const walletProvider = await CdpWalletProvider.configureWithPrivateKey({
       ...config,
       networkId: process.env.NETWORK_ID || 'base-sepolia',
+      privateKey: process.env.AGENT_PRIVATE_KEY as `0x${string}`,
     });
 
     // Initialize CDP Wallet Provider

@@ -3,6 +3,7 @@ import { formatReserves, formatUserSummary } from '@aave/math-utils';
 import { AaveV3Base } from '@bgd-labs/aave-address-book';
 import dayjs from 'dayjs';
 import { ethers } from 'ethers';
+import { getAddress } from 'viem';
 import type { UserReserveData } from '../types/lending-protocol';
 
 const provider = new ethers.providers.JsonRpcProvider(process.env.BASE_RPC_URL);
@@ -65,7 +66,7 @@ export async function getUserReserves(
     // Map to our simplified format
     return userSummary.userReservesData.map((reserve) => ({
       symbol: reserve.reserve.symbol,
-      underlyingAsset: reserve.underlyingAsset,
+      underlyingAsset: getAddress(reserve.underlyingAsset),
       balance: reserve.underlyingBalance,
     }));
   } catch (error) {
