@@ -5,7 +5,7 @@ import {
   customActionProvider,
 } from '@coinbase/agentkit';
 import { encodeFunctionData } from 'viem';
-import { VaultFactoryABI } from '../abis/VaultFactoryAbi';
+import { VaultFactoryABI } from '../abis/VaultFactoryABI';
 import { VAULT_FACTORY_ADDRESS } from '../constants/VaultFactoryAddress';
 import {
   type CreateVaultSchema,
@@ -47,4 +47,5 @@ class VaultFactoryActionProvider extends ActionProvider<EvmWalletProvider> {
   supportsNetwork = (_: Network) => true;
 }
 
-export const vaultFactoryActionProvider = () => new VaultFactoryActionProvider(); 
+export const vaultFactoryActionProvider = () =>
+  new VaultFactoryActionProvider();

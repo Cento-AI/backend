@@ -46,16 +46,14 @@ export async function createStrategy(req: Request, res: Response) {
 
 export async function applyStrategy(req: Request, res: Response) {
   try {
-    const { userAddress, strategy } = req.body;
+    const { userAddress } = req.body;
 
-    if (!userAddress || !strategy) {
-      return res
-        .status(400)
-        .json({ error: 'User address and strategy are required' });
+    if (!userAddress) {
+      return res.status(400).json({ error: 'User address is required' });
     }
 
     const agentService = await AgentService.getInstance();
-    const rebalance = await agentService.applyStrategy(userAddress, strategy);
+    const rebalance = await agentService.applyStrategy(userAddress);
 
     return res.json(rebalance);
   } catch (error) {

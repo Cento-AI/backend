@@ -14,8 +14,10 @@ import { ChatOpenAI } from '@langchain/openai';
 import { vaultActionProvider } from '../action-providers/VaultActionProvider';
 import { vaultFactoryActionProvider } from '../action-providers/VaultFactoryActionProvider';
 import type { PortfolioStrategy } from '../types/portfolio-strategy';
+import type { UserVaultData } from '../types/vault';
 import { getReservesAPY } from './AaveService';
 import { getCompoundReservesAPY } from './CompoundService';
+import { VaultFactoryService } from './VaultFactoryService';
 
 interface StrategyAction {
   asset: string;
@@ -41,6 +43,7 @@ export class AgentService {
   private static instance: AgentService;
   private agent: any;
   private config: any;
+  private userVaults: Map<string, UserVaultData> = new Map();
 
   private constructor() {}
 
@@ -176,41 +179,14 @@ export class AgentService {
     }
   }
 
-  private validateStrategy(
-    strategy: PortfolioStrategy,
-  ): asserts strategy is PortfolioStrategy {
-    if (
-      !strategy.riskLevel ||
-      !['conservative', 'moderate', 'aggressive'].includes(strategy.riskLevel)
-    ) {
-      throw new Error('Invalid risk level');
-    }
-
-    if (
-      !strategy.allocations ||
-      typeof strategy.allocations.lending !== 'number' ||
-      typeof strategy.allocations.liquidity !== 'number' ||
-      Math.abs(
-        strategy.allocations.lending + strategy.allocations.liquidity - 100,
-      ) > 0.01
-    ) {
-      throw new Error('Invalid allocations');
-    }
-
-    if (
-      !strategy.preferences ||
-      typeof strategy.preferences.stablecoinsOnly !== 'boolean' ||
-      !Array.isArray(strategy.preferences.preferredAssets)
-    ) {
-      throw new Error('Invalid preferences');
-    }
-  }
-
-  public async applyStrategy(
-    userAddress: string,
-    strategy: PortfolioStrategy,
-  ): Promise<PortfolioRebalance> {
+  public async applyStrategy(userAddress: string): Promise<PortfolioRebalance> {
     try {
+      // Store vault data
+      const vault = this.userVaults.get(userAddress);
+      if (!vault) {
+        throw new Error('Vault not found');
+      }
+
       const prompt = `
         Analyze the user's current portfolio and suggest actions to align with the given strategy.
         
@@ -218,7 +194,7 @@ export class AgentService {
         ${await this.getCurrentPortfolioState(userAddress)}
         
         Target Strategy:
-        ${JSON.stringify(strategy, null, 2)}
+        ${JSON.stringify(vault.strategy, null, 2)}
         
         Available Protocols:
         - Aave lending rates: ${await getReservesAPY()}
@@ -257,6 +233,40 @@ export class AgentService {
     }
   }
 
+  public async createVault(
+    userAddress: string,
+    strategy: PortfolioStrategy,
+  ): Promise<string> {
+    try {
+      const prompt = `
+        Create a new vault for the user using the create_vault action.
+        User address: ${userAddress}
+      `;
+
+      await this.processMessage(prompt, userAddress);
+
+      // Get the vault address using VaultFactoryService
+      const vaultFactoryService = VaultFactoryService.getInstance();
+      const vaultAddress = await vaultFactoryService.getVaultAddress(
+        userAddress as `0x${string}`,
+      );
+
+      // Store vault data
+      this.userVaults.set(userAddress, {
+        vaultAddress,
+        strategy,
+        status: 'created',
+        createdAt: new Date(),
+        lastUpdated: new Date(),
+      });
+
+      return vaultAddress;
+    } catch (error) {
+      console.error('Error creating vault:', error);
+      throw new Error('Failed to create vault');
+    }
+  }
+
   private async getCurrentPortfolioState(userAddress: string): Promise<string> {
     // Get balances from both protocols
     const [aaveBalances, compoundBalances] = await Promise.all([
@@ -268,5 +278,39 @@ export class AgentService {
       aave: aaveBalances,
       compound: compoundBalances,
     });
+  }
+  /**
+   * Utils (this should be in a separate file)
+   */
+
+  // TODO Should be a validator with a schema
+  private validateStrategy(
+    strategy: PortfolioStrategy,
+  ): asserts strategy is PortfolioStrategy {
+    if (
+      !strategy.riskLevel ||
+      !['conservative', 'moderate', 'aggressive'].includes(strategy.riskLevel)
+    ) {
+      throw new Error('Invalid risk level');
+    }
+
+    if (
+      !strategy.allocations ||
+      typeof strategy.allocations.lending !== 'number' ||
+      typeof strategy.allocations.liquidity !== 'number' ||
+      Math.abs(
+        strategy.allocations.lending + strategy.allocations.liquidity - 100,
+      ) > 0.01
+    ) {
+      throw new Error('Invalid allocations');
+    }
+
+    if (
+      !strategy.preferences ||
+      typeof strategy.preferences.stablecoinsOnly !== 'boolean' ||
+      !Array.isArray(strategy.preferences.preferredAssets)
+    ) {
+      throw new Error('Invalid preferences');
+    }
   }
 }

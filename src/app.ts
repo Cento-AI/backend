@@ -7,7 +7,9 @@ import swaggerOptions from './config/swagger';
 import { aaveRouter } from './routes/aave';
 import { agentRouter } from './routes/agent';
 import { compoundRouter } from './routes/compound';
+import { strategyRouter } from './routes/strategy';
 import { userRouter } from './routes/user';
+import { vaultRouter } from './routes/vault';
 import { validateEnvironment } from './utils/validateEnv';
 
 // Load environment variables
@@ -27,6 +29,8 @@ app.use('/api/agent', agentRouter);
 app.use('/api/aave', aaveRouter);
 app.use('/api/compound', compoundRouter);
 app.use('/api/user', userRouter);
+app.use('/api/vault', vaultRouter);
+app.use('/api/strategy', strategyRouter);
 
 const specs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
