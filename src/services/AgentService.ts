@@ -13,11 +13,13 @@ import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { ChatOpenAI } from '@langchain/openai';
 import { vaultActionProvider } from '../action-providers/VaultActionProvider';
 import { vaultFactoryActionProvider } from '../action-providers/VaultFactoryActionProvider';
+import { SUPPORTED_TOKENS } from '../constants/tokens';
 import type { PortfolioStrategy } from '../types/portfolio-strategy';
 import type { UserVaultData } from '../types/vault';
 import { getReservesAPY } from './AaveService';
 import { getCompoundReservesAPY } from './CompoundService';
 import { VaultFactoryService } from './VaultFactoryService';
+import { VaultService } from './VaultService';
 
 interface StrategyAction {
   asset: string;
@@ -268,17 +270,76 @@ export class AgentService {
   }
 
   private async getCurrentPortfolioState(userAddress: string): Promise<string> {
-    // Get balances from both protocols
-    const [aaveBalances, compoundBalances] = await Promise.all([
-      this.getAaveBalances(userAddress),
-      this.getCompoundBalances(userAddress),
-    ]);
+    try {
+      const vault = this.userVaults.get(userAddress);
+      if (!vault) {
+        throw new Error('Vault not found');
+      }
 
-    return JSON.stringify({
-      aave: aaveBalances,
-      compound: compoundBalances,
-    });
+      const vaultService = VaultService.getInstance();
+      const balances = await vaultService.getMultipleAssetBalances(
+        vault.vaultAddress,
+        SUPPORTED_TOKENS,
+      );
+
+      const portfolioState = {
+        vaultAddress: vault.vaultAddress,
+        assets: balances.map((balance) => ({
+          asset: balance.asset,
+          vaultBalance: balance.balance.toString(),
+          aaveBalance: balance.investedInAave.toString(),
+          compoundBalance: balance.investedInCompound.toString(),
+          uniswapBalance: balance.investedInUniswap.toString(),
+        })),
+      };
+
+      return JSON.stringify(portfolioState);
+    } catch (error) {
+      console.error('Error getting portfolio state:', error);
+      throw new Error('Failed to get portfolio state');
+    }
   }
+
+  public async executeStrategyActions(
+    userAddress: string,
+    actions: StrategyAction[],
+  ): Promise<string[]> {
+    try {
+      const vault = this.userVaults.get(userAddress);
+      if (!vault) {
+        throw new Error('Vault not found');
+      }
+
+      const results: string[] = [];
+
+      for (const action of actions) {
+        const prompt = `
+          Execute the following action on the vault:
+          Vault Address: ${vault.vaultAddress}
+          Action: ${action.action}
+          Protocol: ${action.protocol}
+          Asset: ${action.asset}
+          Amount: ${action.targetAmount}
+
+          Use the appropriate vault action (lend_tokens, withdraw_lent, add_liquidity, remove_liquidity and swap_tokens) to execute this operation.
+        `;
+
+        const responses = await this.processMessage(prompt, userAddress);
+        results.push(responses[responses.length - 1]);
+      }
+
+      // Update vault status
+      vault.status = 'active';
+      vault.lastUpdated = new Date();
+      this.userVaults.set(userAddress, vault);
+
+      return results;
+    } catch (error) {
+      console.error('Error executing strategy actions:', error);
+      throw new Error('Failed to execute strategy actions');
+    }
+  }
+
   /**
    * Utils (this should be in a separate file)
    */

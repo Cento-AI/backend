@@ -61,3 +61,28 @@ export async function applyStrategy(req: Request, res: Response) {
     return res.status(500).json({ error: 'Failed to apply strategy' });
   }
 }
+
+export async function confirmStrategy(req: Request, res: Response) {
+  try {
+    const { userAddress, actions } = req.body;
+
+    if (!userAddress || !actions) {
+      return res
+        .status(400)
+        .json({ error: 'User address and actions are required' });
+    }
+
+    const agentService = await AgentService.getInstance();
+    const result = await agentService.executeStrategyActions(
+      userAddress,
+      actions,
+    );
+
+    return res.json({ result });
+  } catch (error) {
+    console.error('Error executing strategy actions:', error);
+    return res
+      .status(500)
+      .json({ error: 'Failed to execute strategy actions' });
+  }
+}

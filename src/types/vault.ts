@@ -1,7 +1,8 @@
+import type { Address } from 'viem';
 import type { PortfolioStrategy } from './portfolio-strategy';
 
 export interface UserVaultData {
-  vaultAddress: string;
+  vaultAddress: Address;
   strategy?: PortfolioStrategy;
   status: 'created' | 'funded' | 'active';
   createdAt: Date;
@@ -9,6 +10,6 @@ export interface UserVaultData {
 }
 
 export interface VaultBalance {
-  token: string;
+  token: Address;
   balance: bigint;
 }

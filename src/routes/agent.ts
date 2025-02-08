@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   applyStrategy,
+  confirmStrategy,
   createStrategy,
   handleMessage,
 } from '../controllers/AgentController';
@@ -133,7 +134,7 @@ agentRouter.post('/message', handleMessage);
  * @swagger
  * /api/agent/apply-strategy:
  *   post:
- *     summary: Apply a portfolio strategy
+ *     summary: Apply stored strategy to user's funded vault
  *     tags: [Agent]
  *     requestBody:
  *       required: true
@@ -143,12 +144,10 @@ agentRouter.post('/message', handleMessage);
  *             type: object
  *             required:
  *               - userAddress
- *               - strategy
  *             properties:
  *               userAddress:
  *                 type: string
- *               strategy:
- *                 $ref: '#/components/schemas/PortfolioStrategy'
+ *                 description: User's wallet address
  *     responses:
  *       200:
  *         description: Strategy application plan
@@ -173,5 +172,78 @@ agentRouter.post('/message', handleMessage);
  *                             type: string
  *                           value:
  *                             type: string
+ *                 suggestedActions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       asset:
+ *                         type: string
+ *                       currentAmount:
+ *                         type: string
+ *                       targetAmount:
+ *                         type: string
+ *                       action:
+ *                         type: string
+ *                         enum: [deposit, withdraw]
+ *                       protocol:
+ *                         type: string
+ *                         enum: [aave, compound]
+ *       400:
+ *         description: Invalid request parameters or vault not found
+ *       500:
+ *         description: Server error
  */
 agentRouter.post('/apply-strategy', applyStrategy);
+
+/**
+ * @swagger
+ * /api/agent/confirm-strategy:
+ *   post:
+ *     summary: Execute confirmed strategy actions on the vault
+ *     tags: [Agent]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userAddress
+ *               - actions
+ *             properties:
+ *               userAddress:
+ *                 type: string
+ *                 description: User's wallet address
+ *               actions:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     asset:
+ *                       type: string
+ *                     currentAmount:
+ *                       type: string
+ *                     targetAmount:
+ *                       type: string
+ *                     action:
+ *                       type: string
+ *                       enum: [deposit, withdraw]
+ *                     protocol:
+ *                       type: string
+ *                       enum: [aave, compound]
+ *     responses:
+ *       200:
+ *         description: Strategy actions executed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 result:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     description: Transaction results for each action
+ */
+agentRouter.post('/confirm-strategy', confirmStrategy);
