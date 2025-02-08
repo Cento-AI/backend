@@ -33,7 +33,7 @@ export class VaultService {
         client: publicClient,
       });
 
-      const balance = await contract.read.getStruct([tokenAddress]);
+      const balance = await contract.read.getUserStruct([tokenAddress]);
 
       return {
         asset: balance.asset,

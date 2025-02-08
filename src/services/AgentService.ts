@@ -17,6 +17,7 @@ import { SUPPORTED_TOKENS } from '../constants/tokens';
 import type { PortfolioStrategy } from '../types/portfolio-strategy';
 import type { UserVaultData } from '../types/vault';
 import { cleanCdpKey } from '../utils/clean-cdp-key';
+import { cleanLLMResponse } from '../utils/clean-llm-response';
 import { getReservesAPY } from './AaveService';
 import { getCompoundReservesAPY } from './CompoundService';
 import { VaultFactoryService } from './VaultFactoryService';
@@ -73,7 +74,6 @@ export class AgentService {
       WalletService.getInstance().getWalletClient(),
     );
 
-    // Initialize CDP Wallet Provider
     const agentkit = await AgentKit.from({
       walletProvider,
       actionProviders: [
@@ -88,19 +88,33 @@ export class AgentService {
 
     const tools = await getLangChainTools(agentkit);
     const memory = new MemorySaver();
-    this.config = { configurable: { thread_id: 'CDP AgentKit API Example!' } };
+    this.config = {
+      configurable: {
+        thread_id: 'CDP AgentKit API Example!',
+        recursionLimit: 50, // Increase recursion limit if needed
+      },
+    };
 
     this.agent = createReactAgent({
       llm,
       tools,
       checkpointSaver: memory,
       messageModifier: `
-        You are a helpful agent that can interact onchain using the Coinbase Developer Platform AgentKit. You are 
-        empowered to interact onchain using your tools. If you ever need funds, you can request them from the 
-        faucet if you are on network ID 'base-sepolia'. If not, you can provide your wallet details and request 
-        funds from the user. Before executing your first action, get the wallet details to see what network 
-        you're on. If there is a 5XX (internal) HTTP error code, ask the user to try again later.
-        `,
+        You are a DeFi portfolio management agent that can interact with smart contracts using the Coinbase Developer Platform AgentKit.
+        
+        When creating a vault:
+        1. Use the create_vault action directly with the user's address
+        2. Do not try to check balances or perform additional actions
+        3. Return the transaction result immediately
+        
+        When executing other actions:
+        1. Check wallet details first to verify the network
+        2. Request funds from faucet if on base-sepolia
+        3. Execute the requested action
+        4. Handle any 5XX errors by asking the user to try again
+        
+        Be direct and efficient in your actions, avoid unnecessary checks or steps.
+      `,
     });
   }
 
@@ -145,7 +159,10 @@ export class AgentService {
         2. Allocation percentages between lending and liquidity provision (must total 100%)
         3. Asset preferences and constraints
         
-        Format your response as a JSON object with the following structure:
+        IMPORTANT: Return ONLY the raw JSON object, with NO markdown formatting, NO code blocks, NO line breaks  and NO additional text.
+        The response should start with { and end with }.
+        
+        The JSON structure should be:
         {
           "riskLevel": "conservative|moderate|aggressive",
           "allocations": {
@@ -158,16 +175,14 @@ export class AgentService {
             "minimumAPY": number (optional)
           }
         }
-        
-        Only respond with the JSON object, no additional text.
       `;
 
       const responses = await this.processMessage(prompt, userAddress);
 
-      // Parse the last response as JSON (assuming it's the strategy)
-      const strategyJson = JSON.parse(
-        responses[responses.length - 1],
-      ) as PortfolioStrategy;
+      // Clean the response by removing markdown code block syntax
+      const lastResponse = responses[responses.length - 1];
+      const cleanedResponse = cleanLLMResponse(lastResponse);
+      const strategyJson = JSON.parse(cleanedResponse) as PortfolioStrategy;
 
       // Validate the strategy structure
       this.validateStrategy(strategyJson);
@@ -206,6 +221,9 @@ export class AgentService {
         2. Preferred assets from strategy
         3. Minimum APY requirements
         4. Risk level constraints
+
+        IMPORTANT: Return ONLY the raw JSON object, with NO markdown formatting, NO code blocks, NO line breaks  and NO additional text.
+        The response should start with { and end with }.
         
         Format response as a JSON object with:
         {
@@ -224,7 +242,9 @@ export class AgentService {
       `;
 
       const responses = await this.processMessage(prompt, userAddress);
-      const rebalance = JSON.parse(responses[responses.length - 1]);
+      const lastResponse = responses[responses.length - 1];
+      const cleanedResponse = cleanLLMResponse(lastResponse);
+      const rebalance = JSON.parse(cleanedResponse) as PortfolioRebalance;
 
       return rebalance;
     } catch (error) {
