@@ -1,6 +1,6 @@
 import {
   AgentKit,
-  CdpWalletProvider,
+  ViemWalletProvider,
   cdpApiActionProvider,
   cdpWalletActionProvider,
   erc20ActionProvider,
@@ -16,10 +16,12 @@ import { vaultFactoryActionProvider } from '../action-providers/VaultFactoryActi
 import { SUPPORTED_TOKENS } from '../constants/tokens';
 import type { PortfolioStrategy } from '../types/portfolio-strategy';
 import type { UserVaultData } from '../types/vault';
+import { cleanCdpKey } from '../utils/clean-cdp-key';
 import { getReservesAPY } from './AaveService';
 import { getCompoundReservesAPY } from './CompoundService';
 import { VaultFactoryService } from './VaultFactoryService';
 import { VaultService } from './VaultService';
+import { WalletService } from './WalletService';
 
 interface StrategyAction {
   asset: string;
@@ -64,18 +66,12 @@ export class AgentService {
 
     const config = {
       apiKeyName: process.env.CDP_API_KEY_NAME,
-      apiKeyPrivateKey: process.env.CDP_API_KEY_PRIVATE_KEY?.replace(
-        /\\n/g,
-        '\n',
-      ),
+      apiKeyPrivateKey: cleanCdpKey(),
     };
 
-    // Initialize with private key
-    const walletProvider = await CdpWalletProvider.configureWithPrivateKey({
-      ...config,
-      networkId: process.env.NETWORK_ID || 'base-sepolia',
-      privateKey: process.env.AGENT_PRIVATE_KEY as `0x${string}`,
-    });
+    const walletProvider = new ViemWalletProvider(
+      WalletService.getInstance().getWalletClient(),
+    );
 
     // Initialize CDP Wallet Provider
     const agentkit = await AgentKit.from({
