@@ -36,7 +36,7 @@ export class VaultService {
       const balance = await contract.read.getUserStruct([tokenAddress]);
 
       return {
-        asset: balance.asset,
+        asset: tokenAddress,
         balance: balance.balance,
         investedInAave: balance.investedInAave,
         investedInCompound: balance.investedInCompound,

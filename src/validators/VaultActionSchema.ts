@@ -12,7 +12,7 @@ export const lendTokenSchema = baseVaultSchema.extend({
     .enum(['aave', 'compound'])
     .describe('The lending protocol to use'),
   token: addressSchema.describe('The token to lend'),
-  amount: z.bigint().describe('The amount to lend with proper decimals'),
+  amount: z.number().describe('The amount to lend with proper decimals'),
 });
 export type LendTokenSchema = z.infer<typeof lendTokenSchema>;
 
@@ -22,7 +22,7 @@ export const withdrawLentTokenSchema = baseVaultSchema.extend({
     .enum(['aave', 'compound'])
     .describe('The lending protocol to use'),
   token: addressSchema.describe('The token to withdraw'),
-  amount: z.bigint().describe('The amount to withdraw with proper decimals'),
+  amount: z.number().describe('The amount to withdraw with proper decimals'),
 });
 export type WithdrawLentTokenSchema = z.infer<typeof withdrawLentTokenSchema>;
 
@@ -44,7 +44,7 @@ export const removeLiquiditySchema = baseVaultSchema.extend({
   provider: z.enum(['uniswap', 'aerodrome']).describe('The LP protocol to use'),
   token0: addressSchema.describe('The first token to remove'),
   token1: addressSchema.describe('The second token to remove'),
-  liquidityAmount: z.bigint().describe('The amount of LP tokens to remove'),
+  liquidityAmount: z.number().describe('The amount of LP tokens to remove'),
 });
 export type RemoveLiquiditySchema = z.infer<typeof removeLiquiditySchema>;
 
@@ -52,7 +52,7 @@ export type RemoveLiquiditySchema = z.infer<typeof removeLiquiditySchema>;
 export const swapTokenSchema = baseVaultSchema.extend({
   tokenIn: addressSchema.describe('The token to swap in'),
   tokenOut: addressSchema.describe('The token to swap out'),
-  amountIn: z.bigint().describe('The amount to swap with proper decimals'),
+  amountIn: z.number().describe('The amount to swap with proper decimals'),
   fee: z.number().describe('The fee tier in basis points'),
 });
 export type SwapTokenSchema = z.infer<typeof swapTokenSchema>;

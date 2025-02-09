@@ -26,6 +26,8 @@ class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
 
   constructor() {
     super('vault-action-provider', []);
+    // FIXME: This is a temporary solution to get the wallet provider
+    // FIXME: We should use the wallet provider from the agentkit
     this.walletProvider = new ViemWalletProvider(
       WalletService.getInstance().getWalletClient(),
     );
@@ -37,20 +39,25 @@ class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
     schema: lendTokenSchema,
   })
   async lendTokens(args: LendTokenSchema): Promise<string> {
-    const data = encodeFunctionData({
-      abi: VaultABI,
-      functionName: 'lendTokens',
-      args: [args.provider, args.token, args.amount],
-    });
+    try {
+      const data = encodeFunctionData({
+        abi: VaultABI,
+        functionName: 'lendTokens',
+        args: [args.provider, args.token, BigInt(args.amount)],
+      });
 
-    const hash = await this.walletProvider.sendTransaction({
-      to: args.vaultAddress,
-      data,
-    });
+      const hash = await this.walletProvider.sendTransaction({
+        to: args.vaultAddress,
+        data,
+      });
 
-    await this.walletProvider.waitForTransactionReceipt(hash);
+      const receipt = await this.walletProvider.waitForTransactionReceipt(hash);
 
-    return `Successfully lent ${args.amount} ${args.token} to ${args.provider}`;
+      return `Successfully lent ${args.amount} ${args.token} to ${args.provider}`;
+    } catch (error) {
+      console.error('Error in lendTokens:', error);
+      throw error;
+    }
   }
 
   @CreateAction({
@@ -63,7 +70,7 @@ class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
     const data = encodeFunctionData({
       abi: VaultABI,
       functionName: 'withdrawLentTokens',
-      args: [args.provider, args.token, args.amount],
+      args: [args.provider, args.token, BigInt(args.amount)],
     });
 
     const hash = await this.walletProvider.sendTransaction({
@@ -116,7 +123,12 @@ class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
     const data = encodeFunctionData({
       abi: VaultABI,
       functionName: 'removeLiquidity',
-      args: [args.provider, args.token0, args.token1, args.liquidityAmount],
+      args: [
+        args.provider,
+        args.token0,
+        args.token1,
+        BigInt(args.liquidityAmount),
+      ],
     });
 
     const hash = await this.walletProvider.sendTransaction({
@@ -138,7 +150,7 @@ class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
     const data = encodeFunctionData({
       abi: VaultABI,
       functionName: 'swapOnUniswap',
-      args: [args.tokenIn, args.tokenOut, args.amountIn, args.fee],
+      args: [args.tokenIn, args.tokenOut, BigInt(args.amountIn), args.fee],
     });
 
     const hash = await this.walletProvider.sendTransaction({

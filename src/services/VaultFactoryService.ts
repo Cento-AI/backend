@@ -22,14 +22,16 @@ export class VaultFactoryService {
     return VaultFactoryService.instance;
   }
 
-  public async getVaultAddress(ownerAddress: Address): Promise<Address> {
+  public async getVaultAddress(
+    ownerAddress: Address,
+  ): Promise<Address | undefined> {
     try {
       const vaultAddress = await this.contract.read.ownerToVaultAddress([
         ownerAddress,
       ]);
 
       if (vaultAddress === '0x0000000000000000000000000000000000000000') {
-        throw new Error('No vault found for this owner');
+        return undefined;
       }
 
       return vaultAddress;
