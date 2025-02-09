@@ -1,6 +1,5 @@
 import {
   AgentKit,
-  ViemWalletProvider,
   cdpApiActionProvider,
   cdpWalletActionProvider,
   erc20ActionProvider,
@@ -15,6 +14,7 @@ import type { Address } from 'viem';
 import { vaultActionProvider } from '../action-providers/VaultActionProvider';
 import { vaultFactoryActionProvider } from '../action-providers/VaultFactoryActionProvider';
 import { SUPPORTED_TOKENS } from '../constants/tokens';
+import { PrivyWalletProvider } from '../providers/privy-provider';
 import type { PortfolioRebalance } from '../types/portfolio-rebalance';
 import type { PortfolioStrategy } from '../types/portfolio-strategy';
 import type { StrategyAction } from '../types/strategy-action';
@@ -25,7 +25,6 @@ import { getReservesAPY } from './AaveService';
 import { getCompoundReservesAPY } from './CompoundService';
 import { VaultFactoryService } from './VaultFactoryService';
 import { VaultService } from './VaultService';
-import { WalletService } from './WalletService';
 
 export class AgentService {
   private static instance: AgentService;
@@ -54,9 +53,11 @@ export class AgentService {
       networkId: process.env.NETWORK_ID || 'base-sepolia',
     };
 
-    const walletProvider = new ViemWalletProvider(
-      WalletService.getInstance().getWalletClient(),
-    );
+    const walletProvider = await PrivyWalletProvider.configureWithWallet({
+      appId: process.env.PRIVY_APP_ID,
+      appSecret: process.env.PRIVY_APP_SECRET,
+      walletId: process.env.PRIVY_WALLET_ID,
+    });
 
     const agentkit = await AgentKit.from({
       walletProvider,
