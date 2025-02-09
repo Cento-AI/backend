@@ -1,93 +1,138 @@
-# CDP AgentKit.js SDK
-![images/image.png](images/image.png)
-Give your AI Agent its own crypto wallet with the Coinbase Developer Platform (CDP) Agentkit for Node.js! This SDK provides everything you need to bring your AI agents onchain quickly and securely.
+# Cento AI Backend
+![Cento AI Logo](images/image.png)
+
+Cento AI is an autonomous DeFi portfolio manager built for the ETHGlobal Agentic Hackathon. This repository contains the backend code and AI agent implementation that powers Cento's automated portfolio management capabilities.
 
 ## Overview
 
-CDP Agentkit is designed for rapid testing and deployment on Replit, allowing you to create AI agents that can interact with various onchain actions using the CDP SDK.  Simply add your API keys and click "Run" to get started.
+Cento AI helps users manage their DeFi portfolios by:
+- Creating personalized investment strategies based on user preferences
+- Managing smart contract vaults for secure asset management
+- Automatically allocating assets across lending protocols
+- Optimizing returns based on current market conditions
+- Executing transactions through secure smart contracts
+
+The project was initially inspired by Coinbase's AgentKit demo but has evolved significantly to create a specialized DeFi management solution.
+
+## Technical Stack
+
+- **Framework**: Express.js with TypeScript
+- **AI Integration**: LangChain + AgentKit
+- **Blockchain**: Base/Base Sepolia
+- **Smart Contracts**: Custom Vault system
+- **Wallet Infrastructure**: Privy Server Wallets
+- **Documentation**: Swagger/OpenAPI
+
+## Key Features
+
+- **Strategy Creation**: AI-powered creation of personalized investment strategies
+- **Vault Management**: Secure asset management through smart contract vaults
+- **Secure Transactions**: Powered by Privy Server Wallets
+- **Protocol Integration**: 
+  - Aave lending
+  - Compound lending
+  - (More protocols coming soon)
+- **Automated Optimization**: Continuous monitoring and rebalancing of positions
+- **Risk Management**: Strategy enforcement based on user risk preferences
+
+## API Documentation
+
+The API is fully documented using Swagger/OpenAPI. Once the server is running, you can access the documentation at:
+http://localhost:3000/api-docs
 
 ## Getting Started
 
 ### Prerequisites
-- A Replit account
-- CDP API keys (obtain from [Coinbase Developer Platform](https://portal.cdp.coinbase.com/signin))
-- [xAI API key](https://console.x.ai/) (note that xAI currently offers developers $25 in free API credits)
+- Node.js v20.x
+- pnpm
+- Base Sepolia RPC URL
+- OpenAI API Key
+- Coinbase Developer Platform API Keys
+- Privy App Credentials
+- Private key for transaction signing
 
-### Setup Steps
+### Environment Variables
+Create a `.env` file with:
+```
+# Server Configuration
+PORT=3000
 
-1. **Fork the Template**
-   - Click "Fork" to create your own copy of this project
+# OpenAI Configuration
+OPENAI_API_KEY=your_openai_api_key
 
-2. **Configure API Keys**
-   - Navigate to Tools > Secrets
-   - Click "Edit as JSON" **adding the CDP as JSON will naturally fix /n formatting issues that you might otherwise face if copy and pasting directly**
-   - Add your CDP API keys and other required secrets
-   - ![images/ReplitSecretImage.png](images/ReplitSecretImage.png)
+# Coinbase Developer Platform (CDP) Configuration
+CDP_API_KEY_PRIVATE_KEY=your_cdp_private_key
+CDP_API_KEY_NAME=your_cdp_key_name
+NETWORK_ID=base-sepolia
 
-3. **Launch Your Agent**
-   - Click the "Run" button
-   - Select your preferred mode:
-     - Chat Mode: Interactive conversation with your agent
-     - Autonomous Mode: Agent operates independently
-  - ![images/runbutton.png](images/runbutton.png)
+# RPC Configuration
+BASE_RPC_URL=https://sepolia.base.org
+MAINNET_BASE_RPC_URL=https://mainnet.base.org
 
-### Deployment
+# Agent Wallet Configuration
+AGENT_PRIVATE_KEY=your_agent_private_key
 
-For production deployment, we recommend using Replit Core:
-- Ensures reliable uptime
-- Provides enhanced performance
-- Enables persistent storage
+# Privy Configuration
+PRIVY_APP_ID=your_privy_app_id
+PRIVY_APP_SECRET=your_privy_secret
+PRIVY_WALLET_ID=your_privy_wallet_id
+```
 
-**Note**: Coinbase is currently offering sponsorships to CDP Developers for Replit Core this will give you uppgraded AI and Deployment credits. Contact kevin.leffew@coinbase.com for details.
+### Installation
+```bash
+# Install dependencies
+pnpm install
 
-### Frontend Integration
+# Generate agent wallet (if needed)
+pnpm generate-wallet
 
-Once you get the agent going, you can extend it with langchain models.  You may even consider adding a user interface to your agent.  We have a frontend template here that is easy to configure with AgentKit [frontend template](https://replit.com/@alissacrane1/onchain-agent-demo-frontend).
+# Build the project
+pnpm build
 
-## Key Features
+# Start the server
+pnpm start
 
-- **Framework Agnostic**: Built with common AI Agent primitives compatible with any AI framework
-- **LangChain Integration**: 
-  - Built-in support for LangChain.js workflows in this Node.js version
-  - For Python developers, check out our [Python version](https://replit.com/@CoinbaseDev/CDP-AgentKit?v=1)
-  - More frameworks coming soon!
+# Development mode
+pnpm dev
+```
 
-### What can AgentKit do? 
-**AgentKit enables LLMs to take actions onchain, here are some examples**:
-  - Request testnet funds via faucet
-  - Manage wallet details and balance checks
-  - Execute token transfers and trades
-  - Register and manage Basenames
-  - Deploy and manage ERC20 tokens
-  - Create and mint ERC721 NFTs
-  - Deploy tokens using Zora's Wow Launcher (Bonding Curve)
-  - Trade Zora Wow ERC20 coins
-    
-## Resources
+## Development
 
-### Documentation
-- [Getting Started Guide](https://docs.cdp.coinbase.com/agentkit/docs/welcome)
-- [Core API Reference](https://coinbase.github.io/cdp-agentkit-nodejs/cdp-agentkit-core/index.html)
-- [LangChain Extension Reference](https://coinbase.github.io/cdp-agentkit-nodejs/cdp-langchain/index.html)
+```bash
+# Format code
+pnpm format
 
-### Support
-- [GitHub Issues](https://github.com/coinbase/cdp-agentkit/issues)
-- [Discord Community](https://discord.gg/coinbase-dev)
+# Lint code
+pnpm lint
 
-## Security
+# Run tests
+pnpm test
+```
 
-We take security seriously. Please review our [Security Policy](SECURITY.md) for:
-- Reporting vulnerabilities
-- Security best practices
-- Responsible disclosure program
+## Architecture
+
+- `src/services/`: Core business logic and blockchain interactions
+- `src/controllers/`: API route handlers
+- `src/action-providers/`: AgentKit action implementations
+- `src/providers/`: Wallet providers (Privy Server Wallet integration)
+- `src/validators/`: Request/response validation schemas
+- `src/types/`: TypeScript type definitions
+- `src/abis/`: Smart contract ABIs
 
 ## Contributing
 
-We welcome contributions! See our [Contributing Guide](CONTRIBUTING.md) for:
-- Development setup
-- Coding standards
-- Pull request process
+We welcome contributions! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request
 
 ## License
 
-This project is licensed under [LICENSE NAME] - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Built during ETHGlobal Agentic Hackathon
+- Based on initial concepts from Coinbase's AgentKit
+- Powered by Privy Server Wallets
+- Special thanks to the Base and ETHGlobal teams
