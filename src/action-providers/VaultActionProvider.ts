@@ -4,8 +4,10 @@ import {
   type EvmWalletProvider,
   type Network,
 } from '@coinbase/agentkit';
+import { ViemWalletProvider } from '@coinbase/agentkit';
 import { encodeFunctionData } from 'viem';
 import { VaultABI } from '../abis/VaultABI';
+import { WalletService } from '../services/WalletService';
 import {
   type AddLiquiditySchema,
   type LendTokenSchema,
@@ -20,8 +22,13 @@ import {
 } from '../validators/VaultActionSchema';
 
 class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
+  private walletProvider: EvmWalletProvider;
+
   constructor() {
     super('vault-action-provider', []);
+    this.walletProvider = new ViemWalletProvider(
+      WalletService.getInstance().getWalletClient(),
+    );
   }
 
   @CreateAction({
@@ -29,22 +36,19 @@ class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
     description: 'Lend tokens through the vault to a lending protocol',
     schema: lendTokenSchema,
   })
-  async lendTokens(
-    walletProvider: EvmWalletProvider,
-    args: LendTokenSchema,
-  ): Promise<string> {
+  async lendTokens(args: LendTokenSchema): Promise<string> {
     const data = encodeFunctionData({
       abi: VaultABI,
       functionName: 'lendTokens',
       args: [args.provider, args.token, args.amount],
     });
 
-    const hash = await walletProvider.sendTransaction({
+    const hash = await this.walletProvider.sendTransaction({
       to: args.vaultAddress,
       data,
     });
 
-    await walletProvider.waitForTransactionReceipt(hash);
+    await this.walletProvider.waitForTransactionReceipt(hash);
 
     return `Successfully lent ${args.amount} ${args.token} to ${args.provider}`;
   }
@@ -55,22 +59,19 @@ class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
       'Withdraw lent tokens from a lending protocol through the vault',
     schema: withdrawLentTokenSchema,
   })
-  async withdrawLent(
-    walletProvider: EvmWalletProvider,
-    args: WithdrawLentTokenSchema,
-  ): Promise<string> {
+  async withdrawLent(args: WithdrawLentTokenSchema): Promise<string> {
     const data = encodeFunctionData({
       abi: VaultABI,
       functionName: 'withdrawLentTokens',
       args: [args.provider, args.token, args.amount],
     });
 
-    const hash = await walletProvider.sendTransaction({
+    const hash = await this.walletProvider.sendTransaction({
       to: args.vaultAddress,
       data,
     });
 
-    await walletProvider.waitForTransactionReceipt(hash);
+    await this.walletProvider.waitForTransactionReceipt(hash);
 
     return `Successfully withdrew ${args.amount} ${args.token} from ${args.provider}`;
   }
@@ -80,10 +81,7 @@ class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
     description: 'Add liquidity to a pool through the vault',
     schema: addLiquiditySchema,
   })
-  async addLiquidity(
-    walletProvider: EvmWalletProvider,
-    args: AddLiquiditySchema,
-  ): Promise<string> {
+  async addLiquidity(args: AddLiquiditySchema): Promise<string> {
     const data = encodeFunctionData({
       abi: VaultABI,
       functionName: 'addLiquidity',
@@ -99,12 +97,12 @@ class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
       ],
     });
 
-    const hash = await walletProvider.sendTransaction({
+    const hash = await this.walletProvider.sendTransaction({
       to: args.vaultAddress,
       data,
     });
 
-    await walletProvider.waitForTransactionReceipt(hash);
+    await this.walletProvider.waitForTransactionReceipt(hash);
 
     return `Successfully added liquidity: ${args.amount0} ${args.token0} and ${args.amount1} ${args.token1}`;
   }
@@ -114,22 +112,19 @@ class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
     description: 'Remove liquidity from a pool through the vault',
     schema: removeLiquiditySchema,
   })
-  async removeLiquidity(
-    walletProvider: EvmWalletProvider,
-    args: RemoveLiquiditySchema,
-  ): Promise<string> {
+  async removeLiquidity(args: RemoveLiquiditySchema): Promise<string> {
     const data = encodeFunctionData({
       abi: VaultABI,
       functionName: 'removeLiquidity',
       args: [args.provider, args.token0, args.token1, args.liquidityAmount],
     });
 
-    const hash = await walletProvider.sendTransaction({
+    const hash = await this.walletProvider.sendTransaction({
       to: args.vaultAddress,
       data,
     });
 
-    await walletProvider.waitForTransactionReceipt(hash);
+    await this.walletProvider.waitForTransactionReceipt(hash);
 
     return `Successfully removed ${args.liquidityAmount} LP tokens`;
   }
@@ -139,22 +134,19 @@ class VaultActionProvider extends ActionProvider<EvmWalletProvider> {
     description: 'Swap tokens through Uniswap via the vault',
     schema: swapTokenSchema,
   })
-  async swapTokens(
-    walletProvider: EvmWalletProvider,
-    args: SwapTokenSchema,
-  ): Promise<string> {
+  async swapTokens(args: SwapTokenSchema): Promise<string> {
     const data = encodeFunctionData({
       abi: VaultABI,
       functionName: 'swapOnUniswap',
       args: [args.tokenIn, args.tokenOut, args.amountIn, args.fee],
     });
 
-    const hash = await walletProvider.sendTransaction({
+    const hash = await this.walletProvider.sendTransaction({
       to: args.vaultAddress,
       data,
     });
 
-    await walletProvider.waitForTransactionReceipt(hash);
+    await this.walletProvider.waitForTransactionReceipt(hash);
 
     return `Successfully swapped ${args.amountIn} ${args.tokenIn} for ${args.tokenOut}`;
   }

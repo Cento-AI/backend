@@ -1,6 +1,6 @@
 import { type Address, erc20Abi, formatUnits } from 'viem';
 import { CompoundCometABI } from '../abis/CompoundComet';
-import { publicClient } from '../config/viem';
+import { mainnetPublicClient } from '../config/viem';
 import type { UserReserveData } from '../types/lending-protocol';
 
 interface CompoundReserveData {
@@ -20,21 +20,21 @@ const SECONDS_PER_YEAR = 60 * 60 * 24 * 365;
 
 async function getMarketData(address: Address): Promise<CompoundReserveData> {
   // First get the current utilization
-  const utilization = await publicClient.readContract({
+  const utilization = await mainnetPublicClient.readContract({
     address,
     abi: CompoundCometABI,
     functionName: 'getUtilization',
   });
 
   // Use the utilization to get the supply rate
-  const supplyRate = await publicClient.readContract({
+  const supplyRate = await mainnetPublicClient.readContract({
     address,
     abi: CompoundCometABI,
     functionName: 'getSupplyRate',
     args: [utilization],
   });
 
-  const symbol = await publicClient.readContract({
+  const symbol = await mainnetPublicClient.readContract({
     address,
     abi: CompoundCometABI,
     functionName: 'symbol',
@@ -73,12 +73,12 @@ export async function getUserReserves(
     const userReserves = await Promise.all(
       marketAddresses.map(async (market) => {
         const [symbol, balance] = await Promise.all([
-          publicClient.readContract({
+          mainnetPublicClient.readContract({
             address: market,
             abi: erc20Abi,
             functionName: 'symbol',
           }),
-          publicClient.readContract({
+          mainnetPublicClient.readContract({
             address: market,
             abi: erc20Abi,
             functionName: 'balanceOf',

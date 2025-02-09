@@ -6,7 +6,10 @@ import { ethers } from 'ethers';
 import { getAddress } from 'viem';
 import type { UserReserveData } from '../types/lending-protocol';
 
-const provider = new ethers.providers.JsonRpcProvider(process.env.BASE_RPC_URL);
+// TODO Should all be mainnet
+const provider = new ethers.providers.JsonRpcProvider(
+  process.env.MAINNET_BASE_RPC_URL,
+);
 
 const poolDataProviderContract = new UiPoolDataProvider({
   uiPoolDataProviderAddress: AaveV3Base.UI_POOL_DATA_PROVIDER,

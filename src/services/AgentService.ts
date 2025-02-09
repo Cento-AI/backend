@@ -68,6 +68,7 @@ export class AgentService {
     const config = {
       apiKeyName: process.env.CDP_API_KEY_NAME,
       apiKeyPrivateKey: cleanCdpKey(),
+      networkId: process.env.NETWORK_ID || 'base-sepolia',
     };
 
     const walletProvider = new ViemWalletProvider(
@@ -120,7 +121,7 @@ export class AgentService {
 
   public async processMessage(
     message: string,
-    _userAddress: string,
+    args?: Record<string, unknown>,
   ): Promise<string[]> {
     const responses: string[] = [];
 
@@ -177,7 +178,7 @@ export class AgentService {
         }
       `;
 
-      const responses = await this.processMessage(prompt, userAddress);
+      const responses = await this.processMessage(prompt, { userAddress });
 
       // Clean the response by removing markdown code block syntax
       const lastResponse = responses[responses.length - 1];
@@ -207,7 +208,7 @@ export class AgentService {
         
         Current Portfolio:
         ${await this.getCurrentPortfolioState(userAddress)}
-        
+        zWXtTL4KTRqNVk2GiRwGBvJMLTDvXz2wCJVYhVGryKjJHT9qqGaqUBii8FEYajNPgjJXkFrY38XrPtbVPYTfyGpfuXqL3ixoPXnG
         Target Strategy:
         ${JSON.stringify(vault.strategy, null, 2)}
         
@@ -241,7 +242,7 @@ export class AgentService {
         }
       `;
 
-      const responses = await this.processMessage(prompt, userAddress);
+      const responses = await this.processMessage(prompt, { userAddress });
       const lastResponse = responses[responses.length - 1];
       const cleanedResponse = cleanLLMResponse(lastResponse);
       const rebalance = JSON.parse(cleanedResponse) as PortfolioRebalance;
@@ -258,16 +259,44 @@ export class AgentService {
     strategy: PortfolioStrategy,
   ): Promise<string> {
     try {
-      const prompt = `
-        Create a new vault for the user using the create_vault action.
-        User address: ${userAddress}
-      `;
+      const vault = this.userVaults.get(userAddress);
+      if (vault) {
+        return vault.vaultAddress;
+      }
 
-      await this.processMessage(prompt, userAddress);
+      // Try to see if the vault already exists and fail fast
+      const vaultFactoryService = VaultFactoryService.getInstance();
+      let vaultAddress = await vaultFactoryService.getVaultAddress(
+        userAddress as `0x${string}`,
+      );
+
+      if (vaultAddress) {
+        // Store vault data
+        this.userVaults.set(userAddress, {
+          vaultAddress,
+          strategy,
+          status: 'created',
+          createdAt: new Date(),
+          lastUpdated: new Date(),
+        });
+
+        return vaultAddress;
+      }
+
+      const prompt = `Create a new vault using the following action:
+
+Thought: I will use the create_vault action to create a new vault
+Action: create_vault
+Action Input: {
+  "owner": "${userAddress}"
+}
+
+Do not add any explanations or additional steps.`;
+
+      await this.processMessage(prompt, { owner: userAddress });
 
       // Get the vault address using VaultFactoryService
-      const vaultFactoryService = VaultFactoryService.getInstance();
-      const vaultAddress = await vaultFactoryService.getVaultAddress(
+      vaultAddress = await vaultFactoryService.getVaultAddress(
         userAddress as `0x${string}`,
       );
 
@@ -342,7 +371,7 @@ export class AgentService {
           Use the appropriate vault action (lend_tokens, withdraw_lent, add_liquidity, remove_liquidity and swap_tokens) to execute this operation.
         `;
 
-        const responses = await this.processMessage(prompt, userAddress);
+        const responses = await this.processMessage(prompt, { userAddress });
         results.push(responses[responses.length - 1]);
       }
 
